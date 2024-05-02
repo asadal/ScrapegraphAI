@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import pandas as pd
-from task import task
+from task_ollama import task
 from text_to_speech import text_to_speech
 
 st.set_page_config(page_title="Scrapegraph-ai demo",
@@ -32,10 +32,10 @@ left_co, cent_co, last_co = st.columns(3)
 with cent_co:
     st.image("assets/scrapegraphai_logo.png")
 
-key = st.text_input("Openai API key", type="password")
+# key = st.text_input("Openai API key", type="password")
 model = st.radio(
     "Select the model",
-    ["gpt-3.5-turbo", "gpt-3.5-turbo-0125", "gpt-4", "text-to-speech"],
+    ["llama3", "text-to-speech"],
     index=0,
 )
 
@@ -43,40 +43,37 @@ link_to_scrape = st.text_input("Link to scrape")
 prompt = st.text_input("Write the prompt")
 
 if st.button("Run the program", type="primary"):
-    if not key or not model or not link_to_scrape or not prompt:
-        st.error("Please fill in all fields.")
+    st.write("Scraping phase started ...")
+
+    if model ==  "text-to-speech":
+        res = text_to_speech(key, prompt, link_to_scrape)
+        st.write(res["answer"])
+        st.audio(res["audio"])
     else:
-        st.write("Scraping phase started ...")
+        graph_result = task(link_to_scrape, prompt, model)
 
-        if model ==  "text-to-speech":
-            res = text_to_speech(key, prompt, link_to_scrape)
-            st.write(res["answer"])
-            st.audio(res["audio"])
-        else:
-            graph_result = task(key, link_to_scrape, prompt, model)
+        print(graph_result)
+        st.write("# Answer")
+        st.write(graph_result)
 
-            print(graph_result)
-            st.write("# Answer")
-            st.write(graph_result)
+        if graph_result:
+            json_str = json.dumps(graph_result, indent=4)
+            df =  pd.DataFrame(graph_result)
 
-            if graph_result:
-                json_str = json.dumps(graph_result, indent=4)
-                df =  pd.DataFrame(graph_result)
+            st.download_button(
+                label="Download JSON",
+                data=json_str,
+                file_name="scraped_data.json",
+                mime="application/json"
+            )
 
-                st.download_button(
-                    label="Download JSON",
-                    data=json_str,
-                    file_name="scraped_data.json",
-                    mime="application/json"
-                )
-
-                csv = df.to_csv(index=False)
-                st.download_button(
-                    label="Download CSV",
-                    data=csv,
-                    file_name="scraped_data.csv",
-                    mime="text/csv"
-                )
+            csv = df.to_csv(index=False)
+            st.download_button(
+                label="Download CSV",
+                data=csv,
+                file_name="scraped_data.csv",
+                mime="text/csv"
+            )
 
 left_co2, *_, cent_co2, last_co2, last_c3= st.columns([1]*18)
 
